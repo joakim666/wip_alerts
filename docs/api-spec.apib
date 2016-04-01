@@ -1,0 +1,269 @@
+FORMAT: 1A
+
+# Ismolerts
+
+The Ismolerts API is used both by the iOS application and all reporting applications.
+
+# Group Authentication
+
+Resources related to authentication and token handling.
+
+## Accounts resource [/accounts]
+
+### Create a new account [POST]
+
+This is used to create a new account, i.e. the first time the app is started on the phone.
+
++ Request (application/json)
+    + Attributes (object)
+        + device_id (string, required) -  uuid of device
+        + device_type (string, required) - ios|android|etc
+        + device_info (object, required) -  all relevant info like model, os version etc
+
+    + Body
+        {
+            "device_id": "<uuid>",
+            "device_type": "ios",
+            "device_info": {
+                "model": "iPhone6s",
+                "os": "9.3"
+            }
+        }
+
++ Response 201 (application/json)
+
+    + Body
+
+        {
+            "account_id": "<account uuid>"
+        }
+
+## Renewal resource [/renewals]
+
+### Request a renewal [POST]
+
+Request a renewal id that can be used to get a new access token.
+
+
++ Request (application/json)
+    + Attributes (object)
+        + account_id (string)       - the account id
+        + refresh_token (string)    - the refresh token
+        + device_type (string)      - ios|android|etc
+        + device_info (map)         - all relevant info like model, os version etc
+
+    + Body
+        {
+            "account_id": "<uuid>",
+            "refresh_token": "refresh_token",
+            "device_type": "ios",
+            "device_info": {
+                "model": "iPhone6s",
+                "os": "9.3"
+            }
+        }
+
++ Response 201 (application/json)
+
+    {
+        "renewal_id", "<renewal uuid>"
+    }
+
+## Token resource [/token]
+
+### Request a token [POST]
+
+This is used to create a new token.
+
++ Request (application/json)
+    + Attributes (object)
+        + grant_type (string)               - the grant type should be 'renewal' or 'account'
+        + account_id (optional,string)      - the account id. Required when grant_type is 'account'
+        + renewal_id (optional,string)      - the renewal id. Required when grant_type is 'renewal'
+
+    + Body
+        {
+            "grand_type": "renewal",
+            "renewal_id": "wkalj324jsdfkjl3242"
+        }
+
++ Response 201 (application/json)
+
+    {
+        {
+            iat: 1416929061, // when the token was issued (seconds since epoch)
+            jti: "802057ff9b5b4eb7fbb8856b6eb2cc5b", // a unique id for this token (for revocation purposes)
+            sub: "<uuid>", // the unique uuid identifying the user
+            type: "refresh_token", // the type of the token, 'refresh_token' or 'access_token'
+            scopes: {
+                roles: ['user'], // what roles this token has
+                capabilities: ['access_token'], // what capabilities this token has
+            }
+        }
+    }
+
+## Api key resource [/api-keys]
+
+Manage the api keys created by and linked to the currently authenticated user.
+
+### List all api keys [GET]
+
++ Request (application/json)
+
++ Response 200 (application/json)
+    + Attributes (array[object])
+        + id (string) - the id of the api key
+        + description (string) - the description of the api key
+        + issued_at (string) - the date time this api key was issued in ISOXXXX format
+        + refresh_token (string) - the refresh token for this api key
+        + status: active, deactivated (enum)
+        + deactivated_at (string, optional) - the date time this api key was deactivated in ISOXXXX format
+
+    + Body
+        [
+            {
+                "id": "sdfojwroew",
+                "description": "Error reporter runing at sdf034",
+                "issued_at": "2010-01-01 01:01:01",
+                "refresh_token": "sefsklpj",
+                "status": "active"
+            }
+        ]
+
+### Create a new api key [POST]
+
++ Request (application/json)
+    + Attributes (object)
+        + id (string) - the id of the api key
+        + description (string) - the description of the api key
+
+    + Body
+        {
+            "id": "sdfojwroew",
+            "description": "Error reporter runing at sdf034",
+        }
+
++ Response (application/json)
+    The created object
+
+    + Attributes (object)
+        + id (string) - the id of the api key
+        + description (string) - the description of the api key
+        + issued_at (string) - the date time this api key was issued in ISOXXXX format
+        + refresh_token (string) - the refresh token for this api key
+
+    + Body
+        {
+            "id": "sdfojwroew",
+            "description": "Error reporter runing at sdf034",
+            "issued_at": "2010-01-01 01:01:01",
+            "refresh_token": "sfksdalfksdölfk"
+        }
+
+## Ping resource [/ping]
+
+### Ping the service [GET]
+
+Ping the service to make sure it's up and to validate the access token.
+
++ Response 204 (application/json)
+
+If the access token is valid.
+
+
+# Group Reporting
+
+Endpoints related to reporting alerts.
+
+## Alert resource [/alerts]
+
+### Report a new alert [POST]
+
+Report a new alert.
+
++ Request (application/json)
+    + Attributes (object)
+        + title (string, required)
+            A name or short sentence describing the alert.
+        + short_description (string, required)
+            A few sentences describing the alert in some detail.
+        + long_description (string, optional)
+            Complete details of the alert.
+        + priority: high, normal, low (enum)
+
++ Response 201 (application/json)
+    + Attributes (object)
+        - id (string) - the id of the created alert
+    + Body
+        {
+            "id":
+        }
+
+## Heartbeat resource [/heartbeats]
+
+In some cases where the alerts happen seldom it's nice to get some positive feedback too. I.e. to get to know that the check was executed but nothing was found to alert about. By letting the check report a heartbeat every time it's executed this positive feedback is captured.
+
+### Report a heartbeat [POST]
+
+Report a heartbeat.
+
++ Request (application/json)
+    + Attributes (object)
+        + identifier (string, required)
+            A name identifying the checking function reporting the heartbeat
+        + executed_at (string, required)
+            The date and time the check was executed in ISOXXXX format
+
++ Response 201 (application/json)
+
+# Group Retrieving/Displaying
+
+Endpoints related to fetching information to display.
+
+## Alert resource [/alerts]
+
+### Fetch all alerts [GET]
+
+Returns all alerts with status `new` or `retrieved` for the authenticated user.
+
+Alerts can be *archived*, they then get the status `archived` and are no longer returned by this method.
+
++ Request (application/json)
+
++ Response (application/json)
+    + Attributes (object)
+        + id (string) - the id of the alert
+        + new (boolean) - if this alert is new
+            `true` when this alert has not been returned by this call earlier. After this call the flag will be false for this alert.
+        + title (string, required)
+            A name or short sentence describing the alert.
+        + short_description (string, required)
+            A few sentences describing the alert in some detail.
+        + long_description (string, optional)
+            Complete details of the alert.
+        + priority: high, normal, low (enum)
+
+
+## Heartbeat resource [/heartbeats]
+
+### Fetch latest heartbeats [GET]
+
+Returns the latest heartbeat for each unique heartbeat identifier. That means one heartbeat per identifier will be returned.
+
++ Request (application/json)
+
++ Response (application/json)
+    + Attributes (array[object])
+        + identifier (string) - the name identifying the checking function that reported the heartbeat
+        + executed_at (string) - the date time in ISOXXXX format when this heartbeat was received
+        + reporter (object, optional)
+            + id (string) - the id of the reporter
+            + description (string) - the description of the reporter
+
+# Group Actions
+
+Endpoints describing actions that can be done that affect the stored data.
+
+## Alert resource [/alerts/{id}]
+
+### Update the status of an alert [POST]
