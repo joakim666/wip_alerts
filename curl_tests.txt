@@ -1,0 +1,12 @@
+
+curl -v --request GET --header "Authorization: Bearer eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0.xAIwzEXMBexIviGGlZ51hE3sxW6ZTKOkPVz6-f838Q7YuqRvNjoJdQ.bKZwx-jgKJOLA7U5sS7PlA.NKtcJzJR1-bfjCii_hcg0vzDhbHR3wF17QfLe81yWCOBAb62kdDkcKS8wLUBIR7CzEYC_DxVgtmVN6aGWCwUwr2HnAEhxsB_g1QEfSFoPdTtLrpWwWpUmllUYALiN7em89Vq5EcpDOjFBxr2GURywySfZbEdZN0VqDRVqw8xUXou51cjnxkCw7YIdGNb_2Rl.OtVAnxR1SPyVztVyzkHZtA" http://localhost:8080/api/private/ping
+
+
+
+curl -X POST -H "Content-Type: application/json" --header "Authorization: Bearer eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0.xAIwzEXMBexIviGGlZ51hE3sxW6ZTKOkPVz6-f838Q7YuqRvNjoJdQ.bKZwx-jgKJOLA7U5sS7PlA.NKtcJzJR1-bfjCii_hcg0vzDhbHR3wF17QfLe81yWCOBAb62kdDkcKS8wLUBIR7CzEYC_DxVgtmVN6aGWCwUwr2HnAEhxsB_g1QEfSFoPdTtLrpWwWpUmllUYALiN7em89Vq5EcpDOjFBxr2GURywySfZbEdZN0VqDRVqw8xUXou51cjnxkCw7YIdGNb_2Rl.OtVAnxR1SPyVztVyzkHZtA" -d '{"key":"val"}' http://localhost:8080/api/v1/alerts
+
+
+
+# Create account
+
+curl -v -X POST -H "Content-Type: application/json" --header "Authorization: Bearer eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0.xAIwzEXMBexIviGGlZ51hE3sxW6ZTKOkPVz6-f838Q7YuqRvNjoJdQ.bKZwx-jgKJOLA7U5sS7PlA.NKtcJzJR1-bfjCii_hcg0vzDhbHR3wF17QfLe81yWCOBAb62kdDkcKS8wLUBIR7CzEYC_DxVgtmVN6aGWCwUwr2HnAEhxsB_g1QEfSFoPdTtLrpWwWpUmllUYALiN7em89Vq5EcpDOjFBxr2GURywySfZbEdZN0VqDRVqw8xUXou51cjnxkCw7YIdGNb_2Rl.OtVAnxR1SPyVztVyzkHZtA" -d '{"device_id":"device id", "device_type":"test", "device_info":"device info"}' http://localhost:8080/api/v1/accounts

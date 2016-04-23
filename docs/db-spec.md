@@ -55,5 +55,13 @@
     - status*: active, expired, deactivated (enum)
     - created_at* (timestamp) - timestamp of row creation
 
-TODO api keys?
+## api keys [append only table]
+    Holds all issued api keys
+    - id* (string) - uuid
+    - token_id* - fk tokens:id
+    - created_at* (timestamp)
+    - account_id* - fk accounts:id
+    
+    
+    
 
