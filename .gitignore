@@ -1,3 +1,4 @@
 .idea
 *.iml
-/ismonitor
+/my.db
+/wip_alerts
