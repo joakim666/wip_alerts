@@ -14,7 +14,7 @@ type Scope struct {
 type Token struct {
 	IssueTime int64  `json:"iat"`
 	ID        string `json:"jti"`
-	UserUUID  string `json:"sub"`
+	AccountID string `json:"sub"`
 	Type      string `json:"type"`
 	Scope     Scope  `json:"scope"`
 }

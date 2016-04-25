@@ -40,7 +40,7 @@ func ValidateAccessToken(check func(token *Token, ctx *gin.Context) bool, encryp
 			return
 		}
 
-		glog.Infof("Granting access to %s with roles: %s", token.UserUUID, strings.Join(token.Scope.Roles, ","))
+		glog.Infof("Granting access to %s with roles: %s", token.AccountID, strings.Join(token.Scope.Roles, ","))
 
 		// access granted
 		c.Writer.Header().Set("Bearer", serializedToken)

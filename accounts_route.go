@@ -26,7 +26,27 @@ type DeviceDTO struct {
 	// CreatedAt
 }
 
-func postAccounts(db *bolt.DB) gin.HandlerFunc {
+func ListAccounts(db *bolt.DB) gin.HandlerFunc {
+	glog.Infof("listAccounts")
+
+	return func(c *gin.Context) {
+		accounts, err := model.ListAccounts(db)
+		if err != nil {
+			glog.Errorf("ListAccounts failed: %s", err)
+			c.Status(500)
+		} else {
+			accountDTOs, err := makeAccountDTOs(db, accounts)
+			if err != nil {
+				glog.Errorf("Failed to transform accounts into dtos: %s", err)
+				c.Status(500)
+			}
+
+			c.JSON(200, accountDTOs)
+		}
+	}
+}
+
+func PostAccounts(db *bolt.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var json NewAccountDTO
 
@@ -53,7 +73,9 @@ func postAccounts(db *bolt.DB) gin.HandlerFunc {
 				return
 			}
 
-			c.Status(201) // 201 Created
+			c.JSON(201, gin.H{
+				"account_id": account.ID,
+			})
 		}
 	}
 }
@@ -65,26 +87,6 @@ func newDeviceFromDTO(dto *NewAccountDTO) *model.Device {
 	device.DeviceInfo = dto.DeviceInfo
 
 	return device
-}
-
-func listAccounts(db *bolt.DB) gin.HandlerFunc {
-	glog.Infof("listAccounts")
-
-	return func(c *gin.Context) {
-		accounts, err := model.ListAccounts(db)
-		if err != nil {
-			glog.Errorf("ListAccounts failed: %s", err)
-			c.Status(500)
-		} else {
-			accountDTOs, err := makeAccountDTOs(db, accounts)
-			if err != nil {
-				glog.Errorf("Failed to transform accounts into dtos: %s", err)
-				c.Status(500)
-			}
-
-			c.JSON(200, accountDTOs)
-		}
-	}
 }
 
 func makeAccountDTOs(db *bolt.DB, accounts *map[string]model.Account) (*[]AccountDTO, error) {

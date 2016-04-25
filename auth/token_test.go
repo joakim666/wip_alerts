@@ -24,7 +24,7 @@ func createEncryptedTestToken() (string, *Token, error) {
 	var token Token
 	token.IssueTime = time.Now().Unix()
 	token.ID = "Id"
-	token.UserUUID = "UserUUid"
+	token.AccountID = "AccountID"
 	token.Type = "access_token"
 	token.Scope = scope
 

@@ -47,14 +47,12 @@ Request a renewal id that can be used to get a new access token.
 
 + Request (application/json)
     + Attributes (object)
-        + account_id (string)       - the account id
         + refresh_token (string)    - the refresh token
         + device_type (string)      - ios|android|etc
         + device_info (map)         - all relevant info like model, os version etc
 
     + Body
         {
-            "account_id": "<uuid>",
             "refresh_token": "refresh_token",
             "device_type": "ios",
             "device_info": {
