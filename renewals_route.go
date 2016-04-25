@@ -76,7 +76,7 @@ func PostRenewals(db *bolt.DB, privateKey interface{}) gin.HandlerFunc {
 			(*renewals)[renewal.ID] = *renewal
 
 			// save the renewals
-			err a= model.SaveRenewals(db, token.ID, renewals)
+			err = model.SaveRenewals(db, token.ID, renewals)
 			if err != nil {
 				glog.Errorf("Failed to save renewal in db: %s", err)
 				c.Status(500)
