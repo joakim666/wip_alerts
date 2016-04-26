@@ -28,7 +28,7 @@ func main() {
 	glog.Infof("Creating buckets")
 	err = db.Update(func(tx *bolt.Tx) error {
 		// create all buckets
-		buckets := []string{"Accounts", "Devices", "Renewals", "APIKeys", "Heartbeats"}
+		buckets := []string{"Accounts", "Devices", "Renewals", "APIKeys", "Heartbeats", "Tokens"}
 		for _, b := range buckets {
 			glog.Infof("Creating %s bucket", b)
 			_, err := tx.CreateBucketIfNotExists([]byte(b))
@@ -59,7 +59,8 @@ func setupRoutes(db *bolt.DB) *gin.Engine {
 	public.GET("/accounts", ListAccounts(db)) // TODO require admin capability
 	public.POST("/renewals", PostRenewals(db, privateKey))
 	public.GET("/renwewals", ListRenewals(db)) // TODO require admin capability
-	public.POST("/tokens", helloWorld)
+	//public.POST("/tokens", PostTokens(db))
+	public.GET("/tokens", ListTokens(db)) // TODO require admin capability
 
 	private := r.Group("/api/v1")
 	private.Use(auth.ValidateAccessToken(hasRole("role1"), sharedKey))

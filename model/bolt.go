@@ -85,6 +85,47 @@ func BoltGetAccountObjects(db *bolt.DB, accountUUID string, bucketName string, t
 	return &objs, nil
 }
 
+func BoltGetObjects(db *bolt.DB, bucketName string, t reflect.Type) (*map[string][]PersistanceID, error) {
+	objs := make(map[string][]PersistanceID)
+
+	err := db.View(func(tx *bolt.Tx) error {
+		mb := tx.Bucket([]byte(bucketName)) // main bucket
+
+		err := mb.ForEach(func(k, v []byte) error {
+			if v == nil {
+				// nested bucket
+				nb := mb.Bucket(k) // nested bucket
+				if nb == nil {
+					return fmt.Errorf("Failed to open nested bucket")
+				}
+				err := nb.ForEach(func(k, v []byte) error {
+					o := reflect.New(t).Interface() // make new instance to deserialize into
+					err := deserialize(&v, o)
+					if err != nil {
+						return fmt.Errorf("Failed to deserialize object: %s", err)
+					}
+
+					p, _ := reflect.ValueOf(o).Interface().(PersistanceID) // cast to PersistanceID to save in map to return
+
+					objs[p.PersistanceID()] = append(objs[p.PersistanceID()], p)
+
+					return nil
+				})
+				return err
+
+			}
+			return nil
+		})
+
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get %s objects: %s", bucketName, err)
+	}
+
+	return &objs, nil
+}
+
 func BoltMap(objs interface{}) *map[string]PersistanceID {
 	res := make(map[string]PersistanceID)
 
