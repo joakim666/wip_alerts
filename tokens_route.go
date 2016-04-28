@@ -96,6 +96,24 @@ func handleAccountRequest(c *gin.Context, json *NewTokenDTO, db *bolt.DB, public
 		return
 	}
 
+	// get already created tokens for this account
+	oldTokens, err := model.ListTokens(db, account.ID)
+	if err != nil {
+		glog.Errorf("Failed to find existing tokens for account with id=%s: %s", account.ID, err)
+		c.Status(400) // => Bad Request
+		return
+	}
+
+	// check if any of the already created tokens is a refresh token
+	for _, v := range *oldTokens {
+		if v.Type == "refresh_token" {
+			// this account id already has a created refresh token
+			glog.Errorf("Account %s already has a refresh token", account.ID)
+			c.Status(400) // => Bad Request
+			return
+		}
+	}
+
 	if account == nil {
 		glog.Errorf("Failed to find matching account for id=%s: %s", *json.AccountID, err)
 		c.Status(400) // => Bad Request
