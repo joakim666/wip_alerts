@@ -1,10 +1,15 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
+	"flag"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +19,8 @@ import (
 	"github.com/joakim666/wip_alerts/model"
 	"github.com/stretchr/testify/assert"
 )
+
+// TODO add tests for admin role
 
 func TestListTokensWithNoTokens(t *testing.T) {
 	RunInTestDb(t, func(t *testing.T, db *bolt.DB) {
@@ -281,4 +288,149 @@ func createEncryptedAdminTestToken() (string, *auth.Token, error) {
 
 	str, err := auth.EncryptAccessToken(&token, sharedKey)
 	return str, &token, err
+}
+
+func TestPostTokensWithoutData(t *testing.T) {
+	RunInTestDb(t, func(t *testing.T, db *bolt.DB) {
+		assert := assert.New(t)
+
+		var sharedKey = []byte("shared key123456") // used for access tokens
+		//		var privateKey = []byte("fooo")            // used for refresh tokens
+		var publicKey = []byte("fooo") // used for refresh tokens
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+
+		router.POST("/tokens", PostTokens(db, publicKey, sharedKey))
+
+		req, _ := http.NewRequest("POST", "/tokens", strings.NewReader(""))
+		res := httptest.NewRecorder()
+
+		router.ServeHTTP(res, req)
+
+		assert.Equal(400, res.Code)
+	})
+}
+
+func TestPostTokensWithInvalidData(t *testing.T) {
+	RunInTestDb(t, func(t *testing.T, db *bolt.DB) {
+		assert := assert.New(t)
+
+		var sharedKey = []byte("shared key123456") // used for access tokens
+		//		var privateKey = []byte("fooo")            // used for refresh tokens
+		var publicKey = []byte("fooo") // used for refresh tokens
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+
+		router.POST("/tokens", PostTokens(db, publicKey, sharedKey))
+
+		var bodies []string
+
+		// 1. missing grant_type
+		bodies = append(bodies, `
+			{}
+		`)
+
+		// 2. invalid grant type
+		bodies = append(bodies, `
+			{
+				"grant_type": "foo"
+			}
+		`)
+
+		// 3. renewal missing renewal_id
+		bodies = append(bodies, `
+			{
+				"grant_type": "renewal"
+			}
+		`)
+
+		// 4. renewal with invalid renewal_id
+		bodies = append(bodies, `
+			{
+				"grant_type": "renewal",
+				"renewal_id": "foo"
+			}
+		`)
+
+		// 5. account missing account_id
+		bodies = append(bodies, `
+			{
+				"grant_type": "account"
+			}
+		`)
+
+		// 6. account with invalid account_id
+		bodies = append(bodies, `
+			{
+				"grant_type": "account",
+				"account_id": "foo"
+			}
+		`)
+
+		for _, v := range bodies {
+			req, _ := http.NewRequest("POST", "/tokens", strings.NewReader(v))
+			res := httptest.NewRecorder()
+
+			router.ServeHTTP(res, req)
+			assert.Equal(400, res.Code)
+		}
+
+	})
+}
+
+func TestPostTokensWithAccount(t *testing.T) {
+	flag.Lookup("logtostderr").Value.Set("true")
+
+	RunInTestDb(t, func(t *testing.T, db *bolt.DB) {
+		assert := assert.New(t)
+
+		privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+		assert.NoError(err)
+
+		var sharedKey = []byte("shared key123456") // used for access tokens
+		//		var privateKey = []byte("fooo")            // used for refresh tokens
+		//var publicKey = []byte("fooo") // used for refresh tokens
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+
+		router.POST("/tokens", PostTokens(db, &privateKey.PublicKey, sharedKey))
+
+		// create and save account
+		account := model.NewAccount()
+		err = account.Save(db)
+		assert.NoError(err)
+
+		bodyTmpl := `
+			{
+				"grant_type": "account",
+				"account_id": "%s"
+			}
+		`
+		body := fmt.Sprintf(bodyTmpl, account.ID)
+
+		fmt.Printf("FOO :%s", body)
+
+		req, _ := http.NewRequest("POST", "/tokens", strings.NewReader(body))
+		res := httptest.NewRecorder()
+
+		router.ServeHTTP(res, req)
+
+		assert.Equal(201, res.Code)
+
+		resBody, err := ioutil.ReadAll(res.Body)
+		assert.NoError(err)
+
+		var resJson interface{}
+		err = json.Unmarshal(resBody, &resJson)
+		assert.NoError(err)
+
+		resMap := resJson.(map[string]interface{})
+
+		//glog.Info("Res: %s", resJson)
+		assert.NotEmpty(resMap["refresh_token"])
+		assert.NotEmpty(resMap["access_token"])
+	})
 }

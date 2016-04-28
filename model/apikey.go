@@ -27,11 +27,11 @@ func NewAPIKey() *APIKey {
 }
 
 func SaveAPIKeys(db *bolt.DB, accountUUID string, apikeys *map[string]APIKey) error {
-	return BoltSaveAccountObjects(db, accountUUID, "APIKeys", BoltMap(apikeys))
+	return BoltSaveAccountObjects(db, ParentID(accountUUID), "APIKeys", BoltMap(apikeys))
 }
 
 func ListAPIKeys(db *bolt.DB, accountUUID string) (*map[string]APIKey, error) {
-	m, err := BoltGetAccountObjects(db, accountUUID, "APIKeys", reflect.TypeOf(APIKey{}))
+	m, err := BoltGetAccountObjects(db, ParentID(accountUUID), "APIKeys", reflect.TypeOf(APIKey{}))
 	if err != nil {
 		return nil, err
 	}

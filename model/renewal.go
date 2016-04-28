@@ -18,6 +18,10 @@ func (r Renewal) PersistanceID() string {
 	return r.ID
 }
 
+func (r Renewal) Save(db *bolt.DB, accountUUID string) error {
+	return BoltSaveAccountObjects(db, ParentID(accountUUID), "Renewals", BoltSingle(&r))
+}
+
 func NewRenewal() *Renewal {
 	var r Renewal
 	uuid := uuid.NewV4()
@@ -27,11 +31,11 @@ func NewRenewal() *Renewal {
 }
 
 func SaveRenewals(db *bolt.DB, accountUUID string, renewals *map[string]Renewal) error {
-	return BoltSaveAccountObjects(db, accountUUID, "Renewals", BoltMap(renewals))
+	return BoltSaveAccountObjects(db, ParentID(accountUUID), "Renewals", BoltMap(renewals))
 }
 
 func ListRenewals(db *bolt.DB, accountUUID string) (*map[string]Renewal, error) {
-	m, err := BoltGetAccountObjects(db, accountUUID, "Renewals", reflect.TypeOf(Renewal{}))
+	m, err := BoltGetAccountObjects(db, ParentID(accountUUID), "Renewals", reflect.TypeOf(Renewal{}))
 	if err != nil {
 		return nil, err
 	}
@@ -44,4 +48,23 @@ func ListRenewals(db *bolt.DB, accountUUID string) (*map[string]Renewal, error) 
 	}
 
 	return &m2, nil
+}
+
+// GetRenewal returns the given renewal and accountID if a match is found, nil otherwise
+func GetRenewal(db *bolt.DB, renewalID string) (*Renewal, *string, error) {
+	o, accountID, err := BoltGetObject(db, "Renewals", renewalID, reflect.TypeOf(Renewal{}))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if o == nil {
+		return nil, nil, nil
+	}
+
+	var renewal *Renewal
+	renewal = (*o).(*Renewal)
+
+	s := string(*accountID)
+
+	return renewal, &s, nil
 }

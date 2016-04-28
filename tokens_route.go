@@ -6,13 +6,14 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
+	"github.com/joakim666/wip_alerts/auth"
 	"github.com/joakim666/wip_alerts/model"
 )
 
 type NewTokenDTO struct {
-	GrantType string `json:"grant_Type" binding:"required"`
-	AccountID string `json:"account_id"`
-	RenewalID string `json:"renewal_id"`
+	GrantType string  `json:"grant_type" binding:"required"`
+	AccountID *string `json:"account_id"`
+	RenewalID *string `json:"renewal_id"`
 }
 
 type ScopeDTO struct {
@@ -50,46 +51,190 @@ func ListTokens(db *bolt.DB) gin.HandlerFunc {
 	}
 }
 
-/*func PostTokens(db *bolt.DB, privateKey interface{}) gin.HandlerFunc {
+// PostTokens creates a new token. 'publicKey' is the public part of the private-key used to sign and encrypt the refresh tokens. 'encryptionKey' is the shared key used to sign, encrypt, validate and decrypt the access tokens.
+func PostTokens(db *bolt.DB, publicKey interface{}, encryptionKey interface{}) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var json NewRenewalDTO
+		glog.Infof("PostTokens")
+		var json NewTokenDTO
 
-		if c.BindJSON(&json) == nil {
-			token, err := auth.DecryptRefreshToken(json.RefreshToken, privateKey)
-			if err != nil {
-				glog.Errorf("Failed to decrypt refresh token: %s", err)
-				c.Status(500)
-				return
-			}
+		err := c.BindJSON(&json)
+		if err != nil {
+			glog.Infof("Binding failed: %s", err)
+			c.Status(400) // => Bad Request
+			return
+		}
 
-			renewal := model.NewRenewal()
-			renewal.RefreshTokenID = token.ID
+		glog.Infof("Json: %s", json)
 
-			// get existing renewals
-			renewals, err := model.ListRenewals(db, token.AccountID)
-			if err != nil {
-				glog.Errorf("Failed to get renewals: %s", err)
-				c.Status(500)
-				return
-			}
-
-			// add new renewal
-			(*renewals)[renewal.ID] = *renewal
-
-			// save the renewals
-			err = model.SaveRenewals(db, token.ID, renewals)
-			if err != nil {
-				glog.Errorf("Failed to save renewal in db: %s", err)
-				c.Status(500)
-				return
-			}
-
-			c.JSON(201, gin.H{
-				"renewal_id": renewal.ID,
-			})
+		switch json.GrantType {
+		case "account":
+			handleAccountRequest(c, &json, db, publicKey, encryptionKey)
+			return
+		case "renewal":
+			handleRenewalRequest(c, &json, db, encryptionKey)
+			return
+		default:
+			// bad request
+			c.Status(400)
 		}
 	}
-}*/
+}
+
+func handleAccountRequest(c *gin.Context, json *NewTokenDTO, db *bolt.DB, publicKey interface{}, encryptionKey interface{}) {
+	glog.Infof("handleAccountRequest")
+	// AccountID is mandatory
+	if json.AccountID == nil {
+		c.Status(400)
+		return
+	}
+
+	// look up account
+	account, err := model.GetAccount(db, *json.AccountID)
+	if err != nil {
+		glog.Errorf("Failed to find matching account for id=%s: %s", *json.AccountID, err)
+		c.Status(400) // => Bad Request
+		return
+	}
+
+	if account == nil {
+		glog.Errorf("Failed to find matching account for id=%s: %s", *json.AccountID, err)
+		c.Status(400) // => Bad Request
+		return
+	}
+
+	now := time.Now()
+
+	// begin - create refresh token
+	refreshTokenStr, err := createRefreshToken(now, *json.AccountID, db, publicKey)
+	if err != nil {
+		glog.Errorf("Failed to create refresh token: %s", err)
+		c.Status(500)
+		return
+	}
+	// end - create refresh token
+
+	// begin - create access token
+	accessTokenStr, err := createAccessToken(now, *json.AccountID, db, encryptionKey)
+	if err != nil {
+		glog.Errorf("Failed to create access token: %s", err)
+		c.Status(500)
+		return
+	}
+	// end - create access token
+
+	c.JSON(201, gin.H{
+		"refresh_token": refreshTokenStr,
+		"access_token":  accessTokenStr,
+	})
+}
+
+func handleRenewalRequest(c *gin.Context, json *NewTokenDTO, db *bolt.DB, encryptionKey interface{}) {
+	// RenewalID is mandatory
+	if json.RenewalID == nil {
+		c.Status(400)
+		return
+	}
+
+	// look up account from RenewalID
+	renewal, accountID, err := model.GetRenewal(db, *json.RenewalID)
+	if err != nil {
+		glog.Errorf("Failed to find matching renewal for id=%s: %s", *json.RenewalID, err)
+		c.Status(400) // => Bad Request
+		return
+	}
+
+	if renewal == nil {
+		glog.Errorf("Failed to find matching renewal for id=%s: %s", *json.RenewalID, err)
+		c.Status(400) // => Bad Request
+		return
+	}
+
+	now := time.Now()
+
+	// begin - create access token
+	accessTokenStr, err := createAccessToken(now, *accountID, db, encryptionKey)
+	if err != nil {
+		glog.Errorf("Failed to create access token: %s", err)
+		c.Status(500)
+		return
+	}
+	// end - create access token
+
+	c.JSON(201, gin.H{
+		"access_token": accessTokenStr,
+	})
+
+}
+
+func createRefreshToken(creationTime time.Time, accountID string, db *bolt.DB, publicKey interface{}) (string, error) {
+	glog.Infof("createRefreshToken")
+
+	dbRefreshToken := model.NewToken()
+
+	refreshToken := auth.Token{}
+	refreshToken.IssueTime = creationTime.Unix()
+	refreshToken.ID = dbRefreshToken.ID
+	refreshToken.AccountID = accountID
+	refreshToken.Type = "refresh_token" // TODO enum
+	refreshToken.Scope = auth.Scope{
+		Roles:        []string{"user"},
+		Capabilities: []string{"refresh_token"}}
+
+	dbRefreshToken.IssueTime = creationTime
+	dbRefreshToken.Type = refreshToken.Type
+	dbRefreshToken.Scope = model.Scope{
+		Roles:        refreshToken.Scope.Roles,
+		Capabilities: refreshToken.Scope.Capabilities,
+	}
+
+	res, err := auth.EncryptRefreshToken(&refreshToken, publicKey)
+	if err != nil {
+		return "", err
+	}
+
+	dbRefreshToken.RawString = res
+
+	err = dbRefreshToken.Save(db, accountID)
+	if err != nil {
+		return "", err
+	}
+
+	return res, nil
+}
+
+func createAccessToken(creationTime time.Time, accountID string, db *bolt.DB, encryptionKey interface{}) (string, error) {
+	dbAccessToken := model.NewToken()
+
+	accessToken := auth.Token{}
+	accessToken.IssueTime = creationTime.Unix()
+	accessToken.ID = dbAccessToken.ID
+	accessToken.AccountID = accountID
+	accessToken.Type = "access_token" // TODO enum
+	accessToken.Scope = auth.Scope{
+		Roles:        []string{"user"},
+		Capabilities: []string{"access_token"}}
+
+	dbAccessToken.IssueTime = creationTime
+	dbAccessToken.Type = accessToken.Type
+	dbAccessToken.Scope = model.Scope{
+		Roles:        accessToken.Scope.Roles,
+		Capabilities: accessToken.Scope.Capabilities,
+	}
+
+	res, err := auth.EncryptAccessToken(&accessToken, encryptionKey)
+	if err != nil {
+		return "", err
+	}
+
+	dbAccessToken.RawString = res
+
+	err = dbAccessToken.Save(db, accountID)
+	if err != nil {
+		return "", err
+	}
+
+	return res, nil
+}
 
 func makeTokenDTOs(db *bolt.DB, tokens *map[string][]model.Token) *[]TokenDTO {
 	glog.Infof("makeTokenDTOs. Size=%d", len(*tokens))

@@ -53,13 +53,14 @@ func setupRoutes(db *bolt.DB) *gin.Engine {
 
 	var sharedKey = []byte("shared key123456") // used for access tokens
 	var privateKey = []byte("fooo")            // used for refresh tokens
+	var publicKey = []byte("fooo")             // used for refresh tokens
 
 	public := r.Group("/api/v1")
 	public.POST("/accounts", PostAccounts(db))
 	public.GET("/accounts", ListAccounts(db)) // TODO require admin capability
 	public.POST("/renewals", PostRenewals(db, privateKey))
 	public.GET("/renwewals", ListRenewals(db)) // TODO require admin capability
-	//public.POST("/tokens", PostTokens(db))
+	public.POST("/tokens", PostTokens(db, publicKey, sharedKey))
 	public.GET("/tokens", ListTokens(db)) // TODO require admin capability
 
 	private := r.Group("/api/v1")

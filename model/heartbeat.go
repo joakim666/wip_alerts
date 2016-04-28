@@ -32,11 +32,11 @@ func NewHeartbeat() *Heartbeat {
 }
 
 func SaveHeartbeats(db *bolt.DB, accountUUID string, heartbeats *map[string]Heartbeat) error {
-	return BoltSaveAccountObjects(db, accountUUID, "Heartbeats", BoltMap(heartbeats))
+	return BoltSaveAccountObjects(db, ParentID(accountUUID), "Heartbeats", BoltMap(heartbeats))
 }
 
 func ListHeartbeats(db *bolt.DB, accountUUID string) (*map[string]Heartbeat, error) {
-	m, err := BoltGetAccountObjects(db, accountUUID, "Heartbeats", reflect.TypeOf(Heartbeat{}))
+	m, err := BoltGetAccountObjects(db, ParentID(accountUUID), "Heartbeats", reflect.TypeOf(Heartbeat{}))
 	if err != nil {
 		return nil, err
 	}

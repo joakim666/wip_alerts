@@ -8,6 +8,9 @@ import (
 	"github.com/golang/glog"
 )
 
+type ChildID string
+type ParentID string
+
 func BoltSaveObject(bucket *bolt.Bucket, key string, obj interface{}) error {
 	bytes, err := serialize(obj)
 	if err != nil {
@@ -22,7 +25,8 @@ func BoltSaveObject(bucket *bolt.Bucket, key string, obj interface{}) error {
 	return nil
 }
 
-func BoltSaveAccountObjects(db *bolt.DB, accountUUID string, bucketName string, objs *map[string]PersistanceID) error {
+// TODO rename to SaveChildObjects
+func BoltSaveAccountObjects(db *bolt.DB, accountUUID ParentID, bucketName string, objs *map[string]PersistanceID) error {
 	glog.Infof("Saving %s for account %s", bucketName, accountUUID)
 
 	err := db.Update(func(tx *bolt.Tx) error {
@@ -50,7 +54,8 @@ func BoltSaveAccountObjects(db *bolt.DB, accountUUID string, bucketName string, 
 	return nil
 }
 
-func BoltGetAccountObjects(db *bolt.DB, accountUUID string, bucketName string, t reflect.Type) (*map[string]PersistanceID, error) {
+// TODO rename to GetChildObjects
+func BoltGetAccountObjects(db *bolt.DB, accountUUID ParentID, bucketName string, t reflect.Type) (*map[string]PersistanceID, error) {
 	objs := make(map[string]PersistanceID)
 
 	err := db.View(func(tx *bolt.Tx) error {
@@ -83,6 +88,52 @@ func BoltGetAccountObjects(db *bolt.DB, accountUUID string, bucketName string, t
 	}
 
 	return &objs, nil
+}
+
+// BoltGetObject returns the object with the given 'objID' and the accountID it belongs to or nil if none is found
+func BoltGetObject(db *bolt.DB, bucketName string, objID string, t reflect.Type) (*PersistanceID, *ParentID, error) {
+	var obj *PersistanceID
+	var accountID ParentID // TODO rename
+
+	err := db.View(func(tx *bolt.Tx) error {
+		mb := tx.Bucket([]byte(bucketName)) // main bucket
+
+		err := mb.ForEach(func(k, v []byte) error {
+			if v == nil {
+				// nested bucket
+				nb := mb.Bucket(k) // nested bucket
+				if nb == nil {
+					return fmt.Errorf("Failed to open nested bucket")
+				}
+				err := nb.ForEach(func(kk, vv []byte) error {
+					o := reflect.New(t).Interface() // make new instance to deserialize into
+					err := deserialize(&vv, o)
+					if err != nil {
+						return fmt.Errorf("Failed to deserialize object: %s", err)
+					}
+
+					p, _ := reflect.ValueOf(o).Interface().(PersistanceID) // cast to PersistanceID to save in map to return
+
+					if p.PersistanceID() == objID {
+						obj = &p
+						accountID = ParentID(string(k))
+					}
+
+					return nil
+				})
+				return err
+
+			}
+			return nil
+		})
+
+		return err
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to get %s object: %s", bucketName, err)
+	}
+
+	return obj, &accountID, nil
 }
 
 func BoltGetObjects(db *bolt.DB, bucketName string, t reflect.Type) (*map[string][]PersistanceID, error) {
@@ -139,5 +190,16 @@ func BoltMap(objs interface{}) *map[string]PersistanceID {
 		p, _ := v.Interface().(PersistanceID)
 		res[p.PersistanceID()] = p
 	}
+	return &res
+}
+
+func BoltSingle(obj interface{}) *map[string]PersistanceID {
+	res := make(map[string]PersistanceID)
+
+	// unwrap pointer to actual object
+	r := reflect.ValueOf(obj)
+	p, _ := r.Elem().Interface().(PersistanceID)
+	res[p.PersistanceID()] = p
+
 	return &res
 }

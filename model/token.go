@@ -22,8 +22,12 @@ type Token struct {
 	CreatedAt time.Time
 }
 
-func (r Token) PersistanceID() string {
-	return r.ID
+func (t Token) PersistanceID() string {
+	return t.ID
+}
+
+func (t Token) Save(db *bolt.DB, accountUUID string) error {
+	return BoltSaveAccountObjects(db, ParentID(accountUUID), "Tokens", BoltSingle(&t))
 }
 
 func NewToken() *Token {
@@ -35,11 +39,11 @@ func NewToken() *Token {
 }
 
 func SaveTokens(db *bolt.DB, accountUUID string, tokens *map[string]Token) error {
-	return BoltSaveAccountObjects(db, accountUUID, "Tokens", BoltMap(tokens))
+	return BoltSaveAccountObjects(db, ParentID(accountUUID), "Tokens", BoltMap(tokens))
 }
 
 func ListTokens(db *bolt.DB, accountUUID string) (*map[string]Token, error) {
-	m, err := BoltGetAccountObjects(db, accountUUID, "Tokens", reflect.TypeOf(Token{}))
+	m, err := BoltGetAccountObjects(db, ParentID(accountUUID), "Tokens", reflect.TypeOf(Token{}))
 	if err != nil {
 		return nil, err
 	}

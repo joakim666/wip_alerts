@@ -10,10 +10,10 @@ import (
 )
 
 type Account struct {
-	ID        string // uuid
-	Devices   map[string]Device
-	Renewals  map[string]Renewal
-	APIKeys   map[string]APIKey
+	ID        string             // uuid
+	Devices   map[string]Device  // TODO remove?
+	Renewals  map[string]Renewal // TODO remove?
+	APIKeys   map[string]APIKey  // TODO remove?
 	CreatedAt time.Time
 }
 

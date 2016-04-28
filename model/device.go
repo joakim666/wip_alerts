@@ -29,11 +29,11 @@ func NewDevice() *Device {
 }
 
 func SaveDevices(db *bolt.DB, accountUUID string, devices *map[string]Device) error {
-	return BoltSaveAccountObjects(db, accountUUID, "Devices", BoltMap(devices))
+	return BoltSaveAccountObjects(db, ParentID(accountUUID), "Devices", BoltMap(devices))
 }
 
 func ListDevices(db *bolt.DB, accountUUID string) (*map[string]Device, error) {
-	m, err := BoltGetAccountObjects(db, accountUUID, "Devices", reflect.TypeOf(Device{}))
+	m, err := BoltGetAccountObjects(db, ParentID(accountUUID), "Devices", reflect.TypeOf(Device{}))
 	if err != nil {
 		return nil, err
 	}
