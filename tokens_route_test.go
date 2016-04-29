@@ -380,7 +380,7 @@ func TestPostTokensWithInvalidData(t *testing.T) {
 	})
 }
 
-func TestPostTokensWithAccount(t *testing.T) {
+func TestPostTokensWithAccountId(t *testing.T) {
 	flag.Lookup("logtostderr").Value.Set("true")
 
 	RunInTestDb(t, func(t *testing.T, db *bolt.DB) {
@@ -432,5 +432,91 @@ func TestPostTokensWithAccount(t *testing.T) {
 		//glog.Info("Res: %s", resJson)
 		assert.NotEmpty(resMap["refresh_token"])
 		assert.NotEmpty(resMap["access_token"])
+
+		// Test: Using the same account id again should result in 400 Bad Request as an account can only have one refresh token
+
+		req, _ = http.NewRequest("POST", "/tokens", strings.NewReader(body))
+		res = httptest.NewRecorder()
+
+		router.ServeHTTP(res, req)
+
+		assert.Equal(400, res.Code)
+
+		resBody, err = ioutil.ReadAll(res.Body)
+		assert.NoError(err)
+		assert.Empty(resBody)
+	})
+}
+
+func TestPostTokensWithRenewalId(t *testing.T) {
+	flag.Lookup("logtostderr").Value.Set("true")
+
+	RunInTestDb(t, func(t *testing.T, db *bolt.DB) {
+		assert := assert.New(t)
+
+		privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+		assert.NoError(err)
+
+		var sharedKey = []byte("shared key123456") // used for access tokens
+		//		var privateKey = []byte("fooo")            // used for refresh tokens
+		//var publicKey = []byte("fooo") // used for refresh tokens
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+
+		router.POST("/tokens", PostTokens(db, &privateKey.PublicKey, sharedKey))
+
+		// create and save account
+		account := model.NewAccount()
+		err = account.Save(db)
+		assert.NoError(err)
+
+		// create and save renewal
+		renewal := model.NewRenewal()
+		renewal.RefreshTokenID = "foo123"
+		err = renewal.Save(db, account.ID)
+		assert.NoError(err)
+
+		bodyTmpl := `
+			{
+				"grant_type": "renewal",
+				"renewal_id": "%s"
+			}
+		`
+		body := fmt.Sprintf(bodyTmpl, renewal.ID)
+
+		fmt.Printf("FOO :%s", body)
+
+		req, _ := http.NewRequest("POST", "/tokens", strings.NewReader(body))
+		res := httptest.NewRecorder()
+
+		router.ServeHTTP(res, req)
+
+		assert.Equal(201, res.Code)
+
+		resBody, err := ioutil.ReadAll(res.Body)
+		assert.NoError(err)
+
+		var resJson interface{}
+		err = json.Unmarshal(resBody, &resJson)
+		assert.NoError(err)
+
+		resMap := resJson.(map[string]interface{})
+
+		assert.Empty(resMap["refresh_token"])
+		assert.NotEmpty(resMap["access_token"])
+
+		// Test: Using the same renewal id again should result in 400 Bad Request
+		req, _ = http.NewRequest("POST", "/tokens", strings.NewReader(body))
+		res = httptest.NewRecorder()
+
+		router.ServeHTTP(res, req)
+
+		assert.Equal(400, res.Code)
+
+		resBody, err = ioutil.ReadAll(res.Body)
+		assert.NoError(err)
+		assert.Empty(resBody)
+
 	})
 }

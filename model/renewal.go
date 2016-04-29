@@ -9,9 +9,10 @@ import (
 )
 
 type Renewal struct {
-	ID             string // uuid
-	RefreshTokenID string // uuid of refresh token
-	CreatedAt      time.Time
+	ID             string     // uuid
+	RefreshTokenID string     // uuid of refresh token
+	UsedAt         *time.Time // the time at which this renewal was used to create a new access token
+	CreatedAt      time.Time  // the time at which this renewal was created
 }
 
 func (r Renewal) PersistanceID() string {

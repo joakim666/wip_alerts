@@ -167,6 +167,13 @@ func handleRenewalRequest(c *gin.Context, json *NewTokenDTO, db *bolt.DB, encryp
 		return
 	}
 
+	if renewal.UsedAt != nil {
+		// this renewal has already been used
+		glog.Errorf("Renewal %s has already been used", *json.RenewalID)
+		c.Status(400) // => Bad Request
+		return
+	}
+
 	now := time.Now()
 
 	// begin - create access token
@@ -177,6 +184,15 @@ func handleRenewalRequest(c *gin.Context, json *NewTokenDTO, db *bolt.DB, encryp
 		return
 	}
 	// end - create access token
+
+	// Mark renewal as used
+	renewal.UsedAt = &now
+	err = renewal.Save(db, *accountID)
+	if err != nil {
+		glog.Errorf("Failed to saved renewal: %s", err)
+		c.Status(500)
+		return
+	}
 
 	c.JSON(201, gin.H{
 		"access_token": accessTokenStr,
