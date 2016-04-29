@@ -411,8 +411,6 @@ func TestPostTokensWithAccountId(t *testing.T) {
 		`
 		body := fmt.Sprintf(bodyTmpl, account.ID)
 
-		fmt.Printf("FOO :%s", body)
-
 		req, _ := http.NewRequest("POST", "/tokens", strings.NewReader(body))
 		res := httptest.NewRecorder()
 
@@ -484,8 +482,6 @@ func TestPostTokensWithRenewalId(t *testing.T) {
 			}
 		`
 		body := fmt.Sprintf(bodyTmpl, renewal.ID)
-
-		fmt.Printf("FOO :%s", body)
 
 		req, _ := http.NewRequest("POST", "/tokens", strings.NewReader(body))
 		res := httptest.NewRecorder()
