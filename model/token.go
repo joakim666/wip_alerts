@@ -38,9 +38,9 @@ func NewToken() *Token {
 	return &t
 }
 
-func SaveTokens(db *bolt.DB, accountUUID string, tokens *map[string]Token) error {
-	return BoltSaveAccountObjects(db, ParentID(accountUUID), "Tokens", BoltMap(tokens))
-}
+//func SaveTokens(db *bolt.DB, accountUUID string, tokens *map[string]Token) error {
+//	return BoltSaveAccountObjects(db, ParentID(accountUUID), "Tokens", BoltMap(tokens))
+//}
 
 // ListTokens returns all created tokens for an account as a map with the token id as key and the token as value
 func ListTokens(db *bolt.DB, accountUUID string) (*map[string]Token, error) {

@@ -72,10 +72,7 @@ func TestListTokensWithOneToken(t *testing.T) {
 		t1.Scope = scope
 		t1.RawString = "foobar"
 
-		tokens := make(map[string]model.Token)
-		tokens[t1.ID] = *t1
-
-		err := model.SaveTokens(db, "foo", &tokens)
+		err := t1.Save(db, "foo")
 		assert.NoError(err)
 
 		gin.SetMode(gin.TestMode)
@@ -135,11 +132,10 @@ func TestListTokensWithTwoTokensSameAccount(t *testing.T) {
 		t2.Scope = scope
 		t2.RawString = "foobar2"
 
-		tokens := make(map[string]model.Token)
-		tokens[t1.ID] = *t1
-		tokens[t2.ID] = *t2
+		err := t1.Save(db, "foo")
+		assert.NoError(err)
 
-		err := model.SaveTokens(db, "foo", &tokens)
+		err = t2.Save(db, "foo")
 		assert.NoError(err)
 
 		gin.SetMode(gin.TestMode)
@@ -205,11 +201,9 @@ func TestListTokensWithThreeTokensAndTwoDifferentAccount(t *testing.T) {
 		t2.RawString = "foobar2"
 
 		// Add two tokens for account 'foo'
-		tokens1 := make(map[string]model.Token)
-		tokens1[t1.ID] = *t1
-		tokens1[t2.ID] = *t2
-
-		err := model.SaveTokens(db, "foo", &tokens1)
+		err := t1.Save(db, "foo")
+		assert.NoError(err)
+		err = t2.Save(db, "foo")
 		assert.NoError(err)
 
 		t3 := model.NewToken()
@@ -219,10 +213,7 @@ func TestListTokensWithThreeTokensAndTwoDifferentAccount(t *testing.T) {
 		t3.RawString = "foobar3"
 
 		// Add one token for account 'bar'
-		tokens2 := make(map[string]model.Token)
-		tokens2[t3.ID] = *t3
-
-		err = model.SaveTokens(db, "bar", &tokens2)
+		err = t3.Save(db, "bar")
 		assert.NoError(err)
 
 		gin.SetMode(gin.TestMode)
@@ -376,7 +367,6 @@ func TestPostTokensWithInvalidData(t *testing.T) {
 			router.ServeHTTP(res, req)
 			assert.Equal(400, res.Code)
 		}
-
 	})
 }
 
