@@ -113,7 +113,6 @@ Manage the api keys created by and linked to the currently authenticated user.
         + id (string) - the id of the api key
         + description (string) - the description of the api key
         + issued_at (string) - the date time this api key was issued in ISOXXXX format
-        + refresh_token (string) - the refresh token for this api key
         + status: active, deactivated (enum)
         + deactivated_at (string, optional) - the date time this api key was deactivated in ISOXXXX format
 
@@ -123,7 +122,6 @@ Manage the api keys created by and linked to the currently authenticated user.
                 "id": "sdfojwroew",
                 "description": "Error reporter runing at sdf034",
                 "issued_at": "2010-01-01 01:01:01",
-                "refresh_token": "sefsklpj",
                 "status": "active"
             }
         ]
@@ -132,12 +130,10 @@ Manage the api keys created by and linked to the currently authenticated user.
 
 + Request (application/json)
     + Attributes (object)
-        + id (string) - the id of the api key
         + description (string) - the description of the api key
 
     + Body
         {
-            "id": "sdfojwroew",
             "description": "Error reporter runing at sdf034",
         }
 
@@ -148,14 +144,12 @@ Manage the api keys created by and linked to the currently authenticated user.
         + id (string) - the id of the api key
         + description (string) - the description of the api key
         + issued_at (string) - the date time this api key was issued in ISOXXXX format
-        + refresh_token (string) - the refresh token for this api key
 
     + Body
         {
             "id": "sdfojwroew",
             "description": "Error reporter runing at sdf034",
             "issued_at": "2010-01-01 01:01:01",
-            "refresh_token": "sfksdalfksdölfk"
         }
 
 ## Ping resource [/ping]

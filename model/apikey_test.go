@@ -28,11 +28,7 @@ func TestAPIKey(t *testing.T) {
 
 		// add a APIKey
 		a1 := NewAPIKey()
-
-		ak := make(map[string]APIKey)
-		ak[a1.ID] = *a1
-
-		err = SaveAPIKeys(db, "foo", &ak)
+		err = a1.Save(db, "foo")
 		assert.NoError(err)
 
 		// should be one APIKey
@@ -43,10 +39,8 @@ func TestAPIKey(t *testing.T) {
 		assert.Equal(*a1, (*apiKeys)[a1.ID])
 
 		// add another APIKey
-		r2 := NewAPIKey()
-		ak[r2.ID] = *r2
-
-		err = SaveAPIKeys(db, "foo", &ak)
+		a2 := NewAPIKey()
+		err = a2.Save(db, "foo")
 		assert.NoError(err)
 
 		// should be two APIKeys
@@ -55,7 +49,7 @@ func TestAPIKey(t *testing.T) {
 		assert.NotNil(apiKeys)
 		assert.True(len(*apiKeys) == 2)
 		assert.Equal(*a1, (*apiKeys)[a1.ID])
-		assert.Equal(*r2, (*apiKeys)[r2.ID])
+		assert.Equal(*a2, (*apiKeys)[a2.ID])
 
 	})
 }
