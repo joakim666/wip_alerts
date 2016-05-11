@@ -76,7 +76,7 @@ func setupRoutes(db *bolt.DB) *gin.Engine {
 	private.Use(auth.ValidateAccessToken(hasRole("role1"), sharedKey))
 	private.GET("/api-keys", ListAPIKeyRoute(db))
 	private.POST("/api-keys", CreateAPIKeyRoute(db))
-	private.GET("/ping", helloWorld)
+	private.GET("/ping", PingRoute())
 	private.GET("/alerts", helloWorld)
 	private.POST("/alerts/:id", helloWorld)
 	private.GET("/heartbeats", helloWorld)
