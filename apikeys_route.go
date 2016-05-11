@@ -65,6 +65,44 @@ func CreateAPIKeyRoute(db *bolt.DB) gin.HandlerFunc {
 	}
 }
 
+func ListAPIKeyRoute(db *bolt.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		glog.Infof("ListAPIKeyRoute")
+
+		accountIDInterface, exists := c.Get("accountID")
+		if exists == false {
+			glog.Infof("No accountID set")
+			c.Status(401) // => Unauthorized
+			return
+		}
+
+		accountID, ok := accountIDInterface.(string)
+		if ok == false {
+			glog.Infof("AccountID in context is not a string")
+			c.Status(401) // => Unauthorized
+			return
+		}
+
+		glog.Infof("Listing APIKeys for account id: %s", accountID)
+
+		apiKeys, err := model.ListAPIKeys(db, accountID)
+		if err != nil {
+			glog.Infof("No account for account id=%s", accountID)
+			c.Status(400) // => Bad Request
+			return
+		}
+
+		dtos := make(map[string]apiKeyDTO, 0)
+
+		for _, v := range *apiKeys {
+			dto := makeDTO(&v)
+			dtos[dto.ID] = dto
+		}
+
+		c.JSON(200, dtos)
+	}
+}
+
 func makeDTO(apiKey *model.APIKey) apiKeyDTO {
 	var dto apiKeyDTO
 

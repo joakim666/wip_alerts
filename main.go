@@ -74,7 +74,7 @@ func setupRoutes(db *bolt.DB) *gin.Engine {
 	// Begin: ACCESSTOKEN routes
 	private := r.Group("/api/v1")
 	private.Use(auth.ValidateAccessToken(hasRole("role1"), sharedKey))
-	private.GET("/api-keys", helloWorld)
+	private.GET("/api-keys", ListAPIKeyRoute(db))
 	private.POST("/api-keys", CreateAPIKeyRoute(db))
 	private.GET("/ping", helloWorld)
 	private.GET("/alerts", helloWorld)
