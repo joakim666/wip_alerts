@@ -8,13 +8,20 @@ import (
 	"github.com/twinj/uuid"
 )
 
-// AlertPriority shows the priority of the alert
+// AlertPriority shows the priority of the alert, possible values HighPriority, NormalPriority and LowPriority
 type AlertPriority string
+
+// AlertStatus indicates the status of the alert
+type AlertStatus string
 
 const (
 	HighPriority AlertPriority = "high"
 	NormalPriority AlertPriority = "normal"
 	LowPriority AlertPriority = "low"
+
+	NewStatus AlertStatus = "new"
+	SeenStatus AlertStatus = "seen"
+	ArchivedStatus AlertStatus = "archived"
 )
 
 type Alert struct {
@@ -24,6 +31,7 @@ type Alert struct {
 	ShortDescription string
 	LongDescription  string
 	Priority         AlertPriority
+	Status		 AlertStatus
 	TriggeredAt      time.Time
 	CreatedAt        time.Time
 }
@@ -44,9 +52,11 @@ func NewAlert(apiKeyID string) *Alert {
 	a.ID = uuid.String()
 	a.APIKeyID = apiKeyID
 	a.CreatedAt = time.Now()
+	a.Status = NewStatus
 	return &a
 }
 
+// ListsAlerts returns all alerts for the given account
 func ListAlerts(db *bolt.DB, accountUUID string) (*map[string]Alert, error) {
 	m, err := BoltGetAccountObjects(db, ParentID(accountUUID), "Alerts", reflect.TypeOf(Alert{}))
 	if err != nil {
@@ -56,8 +66,27 @@ func ListAlerts(db *bolt.DB, accountUUID string) (*map[string]Alert, error) {
 	// convert to map containing Alert
 	m2 := make(map[string]Alert)
 	for _, v := range *m {
-		hb := v.(*Alert)
-		m2[v.PersistanceID()] = *hb
+		a := v.(*Alert)
+		m2[v.PersistanceID()] = *a
+	}
+
+	return &m2, nil
+}
+
+// ListNonArchivedAlerts list all alerts that do not have status "archived" for the given account
+func ListNonArchivedAlerts(db *bolt.DB, accountUUID string) (*map[string]Alert, error) {
+	m, err := BoltGetAccountObjects(db, ParentID(accountUUID), "Alerts", reflect.TypeOf(Alert{}))
+	if err != nil {
+		return nil, err
+	}
+
+	// convert to map containing Alert and filter
+	m2 := make(map[string]Alert)
+	for _, v := range *m {
+		a := v.(*Alert)
+		if ArchivedStatus != a.Status { // do not included alerts with status archived
+			m2[v.PersistanceID()] = *a
+		}
 	}
 
 	return &m2, nil

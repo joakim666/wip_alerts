@@ -172,6 +172,5 @@ func TestListAPIKey(t *testing.T) {
 		apiKey2 := model.NewAPIKey()
 		apiKey2.Description = "my description"
 		apiKey2.Save(db, "55")
-
 	})
 }

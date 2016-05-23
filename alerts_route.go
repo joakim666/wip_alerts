@@ -22,10 +22,12 @@ type alertDTO struct {
 	ShortDescription string                `json:"short_description"`
 	LongDescription  string                `json:"long_description"`
 	Priority         model.AlertPriority   `json:"priority"`
+	Status           model.AlertStatus     `json:"status"`
 	TriggeredAt      time.Time             `json:"triggered_at"`
 	CreatedAt        time.Time             `json:"created_at"`
 }
 
+// CreateAlertRoute creates and saves a new alert
 func CreateAlertRoute(db *bolt.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		glog.Infof("CreateAlertRoute")
@@ -81,6 +83,45 @@ func CreateAlertRoute(db *bolt.DB) gin.HandlerFunc {
 	}
 }
 
+// ListAlertsRoute lists all alerts with status not "archived"
+func ListAlertsRoute(db *bolt.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		glog.Infof("ListAlertsRoute")
+
+		accountIDInterface, exists := c.Get("accountID")
+		if exists == false {
+			glog.Infof("No accountID set")
+			c.Status(401) // => Unauthorized
+			return
+		}
+
+		accountID, ok := accountIDInterface.(string)
+		if ok == false {
+			glog.Infof("AccountID in context is not a string")
+			c.Status(401) // => Unauthorized
+			return
+		}
+
+		glog.Infof("Listing alerts for account id: %s", accountID)
+
+		alerts, err := model.ListNonArchivedAlerts(db, accountID)
+		if err != nil {
+			glog.Infof("No account for account id=%s", accountID)
+			c.Status(400) // => Bad Request
+			return
+		}
+
+		dtos := make(map[string]alertDTO, 0)
+
+		for _, v := range *alerts {
+			dto := makeAlertDTO(&v)
+			dtos[dto.ID] = dto
+		}
+
+		c.JSON(200, dtos)
+	}
+}
+
 func makeAlertDTO(alert *model.Alert) alertDTO {
 	var dto alertDTO
 
@@ -89,6 +130,7 @@ func makeAlertDTO(alert *model.Alert) alertDTO {
 	dto.ShortDescription = alert.ShortDescription
 	dto.LongDescription = alert.LongDescription
 	dto.Priority = alert.Priority
+	dto.Status = alert.Status
 	dto.TriggeredAt = alert.TriggeredAt
 	dto.CreatedAt = alert.CreatedAt
 
