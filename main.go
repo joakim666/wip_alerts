@@ -9,6 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 	"github.com/joakim666/wip_alerts/auth"
+	"errors"
+	"net/http"
+	"github.com/joakim666/wip_alerts/model"
 )
 
 func main() {
@@ -28,7 +31,7 @@ func main() {
 	glog.Infof("Creating buckets")
 	err = db.Update(func(tx *bolt.Tx) error {
 		// create all buckets
-		buckets := []string{"Accounts", "Devices", "Renewals", "APIKeys", "Heartbeats", "Tokens"}
+		buckets := []string{"Accounts", "Devices", "Renewals", "APIKeys", "Heartbeats", "Tokens", "Alerts"}
 		for _, b := range buckets {
 			glog.Infof("Creating %s bucket", b)
 			_, err := tx.CreateBucketIfNotExists([]byte(b))
@@ -66,7 +69,8 @@ func setupRoutes(db *bolt.DB) *gin.Engine {
 	/* Api key routes require an api-key, either through a header or as a query-parameter. */
 	// Begin: APIKEY routes
 	apiKey := r.Group("/api/v1")
-	apiKey.POST("/alerts", helloWorld)
+	apiKey.Use(validateApiKey(db))
+	apiKey.POST("/alerts", CreateAlertRoute(db))
 	apiKey.POST("/heartbeats", helloWorld)
 	// END: APIKEY routes
 
@@ -104,6 +108,7 @@ func hasRole(role string) func(*auth.Token, *gin.Context) bool {
 	return func(token *auth.Token, ctx *gin.Context) bool {
 		if token.HasRole(role) {
 			ctx.Set("accountID", token.AccountID)
+			//ctx.Set("account", GetACcount(...)) // TODO fix
 			return true
 		}
 
@@ -120,4 +125,46 @@ func hasCapability(capability string) func(*auth.Token, *gin.Context) bool {
 
 		return false
 	}
+}
+
+func validateApiKey(db *bolt.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		apiKeyID, err := extractApiKey(c)
+		if err != nil {
+			glog.Errorf("Can not find api key: %s", err)
+			c.AbortWithError(http.StatusUnauthorized, errors.New("API Key missing"))
+			return
+		}
+
+		apiKey, accountID, err := model.GetAPIKey(db, apiKeyID)
+		if err != nil {
+			glog.Errorf("Can not find api key: %s", err)
+			c.AbortWithError(http.StatusUnauthorized, errors.New("API Key missing"))
+			return
+		}
+
+		if model.APIKeyActive != apiKey.Status {
+			glog.Errorf("Api key with id %s is not valid", apiKeyID)
+			c.AbortWithError(http.StatusUnauthorized, errors.New("API Key not valid"))
+			return
+		}
+
+		glog.Infof("Granting api level access to api key with id %s", apiKey.ID)
+		c.Set("apiKeyID", apiKey.ID)
+		c.Set("accountID", accountID)
+	}
+}
+
+func extractApiKey(c *gin.Context) (string, error) {
+	hdr := c.Request.Header.Get("APIKey")
+	if hdr != "" {
+		return hdr, nil
+	}
+
+	q := c.Query("apiKey")
+	if q != "" {
+		return q, nil
+	}
+
+	return "", errors.New("No APIKey found as header or query parameter")
 }

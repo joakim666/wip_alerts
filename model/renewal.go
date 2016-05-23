@@ -64,7 +64,6 @@ func GetRenewal(db *bolt.DB, renewalID string) (*Renewal, *string, error) {
 
 	var renewal *Renewal
 	renewal = (*o).(*Renewal)
-
 	s := string(*accountID)
 
 	return renewal, &s, nil

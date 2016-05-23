@@ -10,7 +10,7 @@ import (
 func TestNewHeartbeat(t *testing.T) {
 	assert := assert.New(t)
 
-	hb := NewHeartbeat()
+	hb := NewHeartbeat("ApiKeyID555")
 	assert.NotNil(hb)
 	assert.NotNil(hb.ID)
 	assert.NotNil(hb.CreatedAt)
@@ -26,15 +26,9 @@ func TestHeartbeats(t *testing.T) {
 		assert.NotNil(heartbeats)
 		assert.True(len(*heartbeats) == 0)
 
-		hbs := make(map[string]Heartbeat)
-
 		// add a heartbeat
-		h1 := NewHeartbeat()
-		h1.APIKeyID = "APIKeyID1"
-
-		hbs[h1.ID] = *h1
-
-		err = SaveHeartbeats(db, "foo", &hbs)
+		h1 := NewHeartbeat("APIKeyID1")
+		err = h1.Save(db, "foo")
 		assert.NoError(err)
 
 		// should be one Heartbeat
@@ -44,15 +38,9 @@ func TestHeartbeats(t *testing.T) {
 		assert.True(len(*heartbeats) == 1)
 		assert.Equal(*h1, (*heartbeats)[h1.ID])
 
-		//		actualH1 := (*heartbeats)[h1.ID].(Heartbeat)
-		//		assert.Equal("APIKeyID1", actualH1.APIKeyID)
-
 		// add another Heartbeat
-		h2 := NewHeartbeat()
-		h2.APIKeyID = "APIKeyID2"
-		hbs[h2.ID] = *h2
-
-		err = SaveHeartbeats(db, "foo", &hbs)
+		h2 := NewHeartbeat("APIKeyID2")
+		err = h2.Save(db, "foo")
 		assert.NoError(err)
 
 		// should be two heartbeats

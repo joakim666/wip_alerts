@@ -38,7 +38,7 @@ func newTestDB() (*bolt.DB, error) {
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
-		buckets := []string{"Accounts", "Devices", "Renewals", "APIKeys", "Heartbeats", "Renewals", "Tokens"}
+		buckets := []string{"Accounts", "Devices", "Renewals", "APIKeys", "Heartbeats", "Tokens", "Alerts"}
 		for _, b := range buckets {
 			_, err := tx.CreateBucketIfNotExists([]byte(b))
 			if err != nil {

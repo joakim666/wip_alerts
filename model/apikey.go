@@ -45,10 +45,23 @@ func NewAPIKey() *APIKey {
 	return &a
 }
 
-// SaveAPIKeys saves the API key
-//func SaveAPIKeys(db *bolt.DB, accountUUID string, apikeys *map[string]APIKey) error {
-//	return BoltSaveAccountObjects(db, ParentID(accountUUID), "APIKeys", BoltMap(apikeys))
-//}
+// GetAPIKey returns the API Key with the given id
+func GetAPIKey(db *bolt.DB, apiKeyID string) (*APIKey, *string, error) {
+	o, parentID, err := BoltGetObject(db, "APIKeys", apiKeyID, reflect.TypeOf(APIKey{}))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if o == nil {
+		return nil, nil, nil
+	}
+
+	var apiKey *APIKey
+	apiKey = (*o).(*APIKey)
+	s := string(*parentID)
+
+	return apiKey, &s, nil
+}
 
 // ListAPIKeys returns all API keys for the given account
 func ListAPIKeys(db *bolt.DB, accountUUID string) (*map[string]APIKey, error) {

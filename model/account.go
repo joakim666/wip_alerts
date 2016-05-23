@@ -11,15 +11,11 @@ import (
 
 type Account struct {
 	ID        string             // uuid
-	Devices   map[string]Device  // TODO remove?
-	Renewals  map[string]Renewal // TODO remove?
-	APIKeys   map[string]APIKey  // TODO remove?
 	CreatedAt time.Time
 }
 
 func NewAccount() *Account {
 	var a Account
-	a.Devices = make(map[string]Device)
 	uuid := uuid.NewV4()
 	a.ID = uuid.String()
 	a.CreatedAt = time.Now()
@@ -79,6 +75,7 @@ func ListAccounts(db *bolt.DB) (*map[string]Account, error) {
 	return &accounts, nil
 }
 
+// Save saves the account
 func (account *Account) Save(db *bolt.DB) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("Accounts"))
@@ -91,4 +88,14 @@ func (account *Account) Save(db *bolt.DB) error {
 
 		return nil
 	})
+}
+
+// Alerts returns the alerts for the account
+func (account *Account) Alerts(db *bolt.DB) (*map[string]Alert, error) {
+	return ListAlerts(db, account.ID)
+}
+
+// APIKeys returns all api keys for the account
+func (account *Account) APIKeys(db *bolt.DB) (*map[string]APIKey, error) {
+	return ListAPIKeys(db, account.ID)
 }
