@@ -34,6 +34,7 @@ type Alert struct {
 	Status		 AlertStatus
 	TriggeredAt      time.Time
 	CreatedAt        time.Time
+	UpdatedAt	 time.Time
 }
 
 func (a Alert) PersistanceID() string {
@@ -52,8 +53,27 @@ func NewAlert(apiKeyID string) *Alert {
 	a.ID = uuid.String()
 	a.APIKeyID = apiKeyID
 	a.CreatedAt = time.Now()
+	a.UpdatedAt = a.CreatedAt
 	a.Status = NewStatus
 	return &a
+}
+
+// GetAlert returns the alert with the given id and the account id it belongs to
+func GetAlert(db *bolt.DB, alertID string) (*Alert, *string, error) {
+	o, parentID, err := BoltGetObject(db, "Alerts", alertID, reflect.TypeOf(Alert{}))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if o == nil {
+		return nil, nil, nil
+	}
+
+	var alert *Alert
+	alert = (*o).(*Alert)
+	s := string(*parentID)
+
+	return alert, &s, nil
 }
 
 // ListsAlerts returns all alerts for the given account

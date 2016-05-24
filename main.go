@@ -82,7 +82,7 @@ func setupRoutes(db *bolt.DB) *gin.Engine {
 	private.POST("/api-keys", CreateAPIKeyRoute(db))
 	private.GET("/ping", PingRoute())
 	private.GET("/alerts", ListAlertsRoute(db))
-	private.POST("/alerts/:id", helloWorld)
+	private.POST("/alerts/:id", UpdateAlertRoute(db))
 	private.GET("/heartbeats", helloWorld)
 	// End: ACCESSTOKEN routes
 

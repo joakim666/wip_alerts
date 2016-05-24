@@ -45,7 +45,7 @@ func NewAPIKey() *APIKey {
 	return &a
 }
 
-// GetAPIKey returns the API Key with the given id
+// GetAPIKey returns the API Key with the given id and the account id it belongs to
 func GetAPIKey(db *bolt.DB, apiKeyID string) (*APIKey, *string, error) {
 	o, parentID, err := BoltGetObject(db, "APIKeys", apiKeyID, reflect.TypeOf(APIKey{}))
 	if err != nil {

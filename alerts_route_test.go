@@ -367,3 +367,174 @@ func TestListAlerts(t *testing.T) {
 		assert.NotEmpty(r1["created_at"])
 	})
 }
+
+func TestUpdateAlertRouteWithMissingAccountID(t *testing.T) {
+	flag.Lookup("logtostderr").Value.Set("true")
+
+	RunInTestDb(t, func(t *testing.T, db *bolt.DB) {
+		assert := assert.New(t)
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+
+		router.POST("/alerts/:id", UpdateAlertRoute(db))
+
+		req, _ := http.NewRequest("POST", "/alerts/123", nil)
+		res := httptest.NewRecorder()
+
+		router.ServeHTTP(res, req)
+		assert.Equal(401, res.Code)
+	})
+}
+
+func TestUpdateAlertRouteWithBadInput(t *testing.T) {
+	flag.Lookup("logtostderr").Value.Set("true")
+
+	RunInTestDb(t, func(t *testing.T, db *bolt.DB) {
+		assert := assert.New(t)
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+
+		router.Use(func(c *gin.Context) {
+			c.Set("accountID", "55")
+		})
+
+		router.POST("/alerts/:id", UpdateAlertRoute(db))
+
+		apiKey1 := model.NewAPIKey()
+		apiKey1.Description = "my description"
+		apiKey1.Save(db, "55")
+
+		// add an alert for apiKey1
+		a1 := model.NewAlert(apiKey1.ID)
+		a1.Title = "title1"
+		a1.ShortDescription = "short_description1";
+		a1.LongDescription = "long_description1";
+		a1.Priority = model.HighPriority
+		a1.TriggeredAt = time.Now()
+		a1.Save(db, "55")
+
+		var body = `
+			{
+				"status": "apa"
+			}
+		`
+
+		req, _ := http.NewRequest("POST", "/alerts/" + a1.ID, strings.NewReader(body))
+		res := httptest.NewRecorder()
+
+
+		router.ServeHTTP(res, req)
+		assert.Equal(http.StatusBadRequest, res.Code)
+	})
+}
+
+func TestUpdateAlertRoute(t *testing.T) {
+	flag.Lookup("logtostderr").Value.Set("true")
+
+	RunInTestDb(t, func(t *testing.T, db *bolt.DB) {
+		assert := assert.New(t)
+
+		gin.SetMode(gin.TestMode)
+		router := gin.New()
+
+		router.Use(func(c *gin.Context) {
+			c.Set("accountID", "55")
+		})
+
+		router.POST("/alerts/:id", UpdateAlertRoute(db))
+
+		apiKey1 := model.NewAPIKey()
+		apiKey1.Description = "my description"
+		apiKey1.Save(db, "55")
+
+		// add an alert for apiKey1
+		//
+		// the alert has status "new"
+		a1 := model.NewAlert(apiKey1.ID)
+		a1.Title = "title1"
+		a1.ShortDescription = "short_description1";
+		a1.LongDescription = "long_description1";
+		a1.Priority = model.HighPriority
+		a1.TriggeredAt = time.Now()
+		a1.Save(db, "55")
+
+		var body = `
+			{
+				"status": "seen"
+			}
+		`
+
+		req, _ := http.NewRequest("POST", "/alerts/" + a1.ID, strings.NewReader(body))
+		res := httptest.NewRecorder()
+
+		router.ServeHTTP(res, req)
+		assert.Equal(http.StatusOK, res.Code)
+
+		resBody, err := ioutil.ReadAll(res.Body)
+		assert.NoError(err)
+
+		var resJson interface{}
+		err = json.Unmarshal(resBody, &resJson)
+		assert.NoError(err)
+
+		// verify that the status was changed to seen
+		resMap := resJson.(map[string]interface{})
+		assert.Equal(a1.ID, resMap["id"])
+		assert.Equal(a1.Title, resMap["title"])
+		assert.Equal(a1.ShortDescription, resMap["short_description"])
+		assert.Equal(a1.LongDescription, resMap["long_description"])
+		assert.Equal(a1.Priority, resMap["priority"])
+		assert.Equal(model.SeenStatus, resMap["status"])
+		assert.NotEmpty(resMap["triggered_at"])
+		assert.NotEmpty(resMap["created_at"])
+		assert.NotEmpty(resMap["updated_at"])
+		assert.NotEqual(resMap["created_at"], resMap["updated_at"])
+
+
+		// the alert should now have status "seen"
+		body = `
+			{
+				"status": "new"
+			}
+		`
+
+		req, _ = http.NewRequest("POST", "/alerts/" + a1.ID, strings.NewReader(body))
+		res = httptest.NewRecorder()
+
+		router.ServeHTTP(res, req)
+		assert.Equal(http.StatusBadRequest, res.Code) // should not be allowed to change status from "seen" to "new"
+
+		body = `
+			{
+				"status": "archived"
+			}
+		`
+
+		req, _ = http.NewRequest("POST", "/alerts/" + a1.ID, strings.NewReader(body))
+		res = httptest.NewRecorder()
+
+		router.ServeHTTP(res, req)
+		assert.Equal(http.StatusOK, res.Code) // should be allowed to change status from "seen" to "archived"
+
+		resBody, err = ioutil.ReadAll(res.Body)
+		assert.NoError(err)
+
+		err = json.Unmarshal(resBody, &resJson)
+		assert.NoError(err)
+
+		// verify that the status was changed to archived
+		resMap = resJson.(map[string]interface{})
+		assert.Equal(a1.ID, resMap["id"])
+		assert.Equal(a1.Title, resMap["title"])
+		assert.Equal(a1.ShortDescription, resMap["short_description"])
+		assert.Equal(a1.LongDescription, resMap["long_description"])
+		assert.Equal(a1.Priority, resMap["priority"])
+		assert.Equal(model.ArchivedStatus, resMap["status"])
+		assert.NotEmpty(resMap["triggered_at"])
+		assert.NotEmpty(resMap["created_at"])
+		assert.NotEmpty(resMap["updated_at"])
+		assert.NotEqual(resMap["created_at"], resMap["updated_at"])
+	})
+}
