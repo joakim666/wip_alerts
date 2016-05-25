@@ -166,7 +166,7 @@ func TestListAPIKey(t *testing.T) {
 
 		assert.Equal(apiKey1.ID, r1["id"])
 		assert.Equal(apiKey1.Description, r1["description"])
-		assert.Equal(apiKey1.Status, r1["status"])
+		assert.Equal(string(apiKey1.Status), r1["status"])
 		assert.NotEmpty(r1["issued_at"])
 
 		apiKey2 := model.NewAPIKey()
