@@ -71,7 +71,7 @@ func setupRoutes(db *bolt.DB) *gin.Engine {
 	apiKey := r.Group("/api/v1")
 	apiKey.Use(validateApiKey(db))
 	apiKey.POST("/alerts", CreateAlertRoute(db))
-	apiKey.POST("/heartbeats", helloWorld)
+	apiKey.POST("/heartbeats", CreateHeartbeatRoute(db))
 	// END: APIKEY routes
 
 	/* Access token routes require an access token set as a header. */
@@ -83,7 +83,7 @@ func setupRoutes(db *bolt.DB) *gin.Engine {
 	private.GET("/ping", PingRoute())
 	private.GET("/alerts", ListAlertsRoute(db))
 	private.POST("/alerts/:id", UpdateAlertRoute(db))
-	private.GET("/heartbeats", helloWorld)
+	private.GET("/heartbeats", LatestHeartbeatsRoute(db))
 	// End: ACCESSTOKEN routes
 
 	/* Admin capability routes requires a token with admin capabilty set */
@@ -96,12 +96,6 @@ func setupRoutes(db *bolt.DB) *gin.Engine {
 	// End: Admin capability routes
 
 	return r
-}
-
-func helloWorld(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"message": "Hello world",
-	})
 }
 
 func hasRole(role string) func(*auth.Token, *gin.Context) bool {
